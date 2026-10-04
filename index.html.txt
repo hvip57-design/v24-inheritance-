@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نظام v24 للإرث</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Tahoma, sans-serif; background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%); color: #e0e0e0; min-height: 100vh; padding: 20px; }
+  .container { max-width: 1100px; margin: 0 auto; }
+  header { text-align: center; padding: 30px 20px; background: rgba(255,255,255,0.05); border-radius: 15px; margin-bottom: 25px; border: 1px solid rgba(255,255,255,0.1); }
+  h1 { font-size: 2em; background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 10px; }
+  .subtitle { color: #888; font-size: 0.95em; }
+  .section { background: rgba(255,255,255,0.05); border-radius: 15px; padding: 25px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); }
+  .section h2 { color: #00d2ff; margin-bottom: 15px; font-size: 1.3em; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; }
+  .heirs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+  .heir-item { background: rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 10px; }
+  .heir-item:hover { background: rgba(255,255,255,0.1); }
+  .heir-item input[type="checkbox"] { width: 20px; height: 20px; accent-color: #00d2ff; cursor: pointer; }
+  .heir-item input[type="number"] { width: 55px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 5px; padding: 4px 8px; font-size: 0.9em; display: none; }
+  .heir-item input[type="number"].visible { display: block; }
+  .heir-item label { cursor: pointer; font-size: 0.95em; flex: 1; }
+  button { background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%); border: none; color: white; padding: 12px 30px; border-radius: 10px; font-size: 1em; cursor: pointer; font-weight: bold; margin-top: 10px; }
+  button:hover { transform: scale(1.05); }
+  button.reset { background: rgba(255,255,255,0.1); margin-right: 10px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+  th, td { padding: 12px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  th { background: rgba(0,210,255,0.15); color: #00d2ff; font-weight: bold; }
+  tr:hover { background: rgba(255,255,255,0.03); }
+  .result-total { background: rgba(74,222,128,0.15); padding: 15px; border-radius: 10px; margin-top: 15px; text-align: center; font-size: 1.1em; border: 1px solid rgba(74,222,128,0.3); }
+  .error { background: rgba(245,87,108,0.15); padding: 15px; border-radius: 10px; color: #f5576c; border: 1px solid rgba(245,87,108,0.3); font-weight: bold; }
+  .estate-input { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; padding: 15px; background: rgba(0,210,255,0.1); border-radius: 10px; }
+  .estate-input label { font-size: 1.1em; }
+  .estate-input input { flex: 1; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 8px; padding: 10px 15px; font-size: 1.1em; max-width: 200px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 5px; font-size: 0.8em; font-weight: bold; }
+  .badge-tarkumi { background: rgba(74,222,128,0.2); color: #4ade80; }
+  .badge-thabit { background: rgba(96,165,250,0.2); color: #60a5fa; }
+  .badge-maftouh { background: rgba(251,191,36,0.2); color: #fbbf24; }
+  .badge-K { background: rgba(239,68,68,0.2); color: #ef4444; }
+  .badge-F { background: rgba(139,92,246,0.2); color: #8b5cf6; }
+  .warning { background: rgba(251,191,36,0.15); padding: 10px; border-radius: 8px; color: #fbbf24; font-size: 0.9em; margin-top: 10px; border: 1px solid rgba(251,191,36,0.3); }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>نظام v24 للإرث</h1>
+    <p class="subtitle">نظام الوعاءين — مبني على النص القرآني</p>
+    <p style="color:#666;font-size:0.85em;margin-top:8px">🟢 ما ترك | 🔵 مما ترك | ⚪ مفتوح</p>
+  </header>
+
+  <div class="section">
+    <h2>المعطيات</h2>
+    <div class="estate-input">
+      <label>💰 قيمة التركة:</label>
+      <input type="number" id="estate" value="120" min="1">
+    </div>
+    <h2>اختر الورثة</h2>
+    <div class="heirs-grid" id="heirsGrid"></div>
+    <div class="warning" id="warningMsg" style="display:none">⚠️ لا يمكن أن يجتمع الزوج والزوجة في الميراث.</div>
+    <div style="margin-top:15px">
+      <button onclick="calculate()">احسب الميراث</button>
+      <button class="reset" onclick="resetAll()">مسح الكل</button>
+    </div>
+  </div>
+
+  <div class="section" id="resultSection" style="display:none">
+    <h2>النتيجة</h2>
+    <div id="resultContent"></div>
+  </div>
+</div>
+
+<script>
+const HEIRS = [
+  { id: 'husband', name: 'زوج', count: false },
+  { id: 'wife', name: 'زوجة', count: true, max: 4 },
+  { id: 'father', name: 'أب', count: false },
+  { id: 'mother', name: 'أم', count: false },
+  { id: 'son', name: 'ابن', count: true, max: 10 },
+  { id: 'daughter', name: 'بنت', count: true, max: 10 },
+  { id: 'brothers', name: 'أخ', count: true, max: 10 },
+  { id: 'sisters', name: 'أخت', count: true, max: 10 }
+];
+
+function buildForm() {
+  const grid = document.getElementById('heirsGrid');
+  grid.innerHTML = '';
+  HEIRS.forEach(h => {
+    const div = document.createElement('div');
+    div.className = 'heir-item';
+    div.innerHTML = `
+      <input type="checkbox" id="chk_${h.id}" onchange="onCheck('${h.id}')">
+      <label for="chk_${h.id}">${h.name}</label>
+      ${h.count ? `<input type="number" id="num_${h.id}" min="1" max="${h.max}" value="1" style="display:none">` : ''}
+    `;
+    grid.appendChild(div);
+  });
+}
+
+function onCheck(id) {
+  const chk = document.getElementById('chk_' + id);
+  const num = document.getElementById('num_' + id);
+  if (num) num.style.display = chk.checked ? 'block' : 'none';
+  if (id === 'husband' && chk.checked) { document.getElementById('chk_wife').checked = false; document.getElementById('num_wife').style.display = 'none'; }
+  if (id === 'wife' && chk.checked) { document.getElementById('chk_husband').checked = false; }
+}
+
+function resetAll() {
+  HEIRS.forEach(h => {
+    document.getElementById('chk_' + h.id).checked = false;
+    const num = document.getElementById('num_' + h.id);
+    if (num) { num.value = 1; num.style.display = 'none'; }
+  });
+  document.getElementById('warningMsg').style.display = 'none';
+  document.getElementById('resultSection').style.display = 'none';
+}
+
+function gcd(a, b) { return b ? gcd(b, a % b) : a; }
+function F(n, d=1) { if (d < 0) { n = -n; d = -d; } const g = gcd(Math.abs(n), d) || 1; return { n: n/g, d: d/g }; }
+function add(a, b) { return F(a.n*b.d + b.n*a.d, a.d*b.d); }
+function sub(a, b) { return F(a.n*b.d - b.n*a.d, a.d*b.d); }
+function mul(a, b) { return F(a.n*b.n, a.d*b.d); }
+function div(a, b) { return F(a.n*b.d, a.d*b.n); }
+function toStr(a) { return a.d === 1 ? a.n.toString() : a.n + '/' + a.d; }
+function toPct(a) { return (a.n / a.d * 100).toFixed(2) + '%'; }
+
+function calc(h) {
+  const son = h.son || 0, dau = h.daughter || 0;
+  const hasChild = son > 0 || dau > 0;
+  const hasMaleChild = son > 0;
+  const father = !!h.father, mother = !!h.mother;
+  const kallah = !father && !hasMaleChild;
+  const brothers = h.brothers || 0, sisters = h.sisters || 0;
+  const totalSib = brothers + sisters;
+  const husband = !!h.husband, wife = h.wife || 0;
+
+  let count = 0;
+  if (husband) count++;
+  if (wife) count++;
+  if (father) count++;
+  if (mother) count++;
+  if (son) count += son;
+  if (dau) count += dau;
+  if (brothers) count += brothers;
+  if (sisters) count += sisters;
+
+  if (count === 1) {
+    const res = {};
+    if (husband) res['زوج'] = { frac: F(1), waa: '-', type: 'الوحيد' };
+    if (wife) res['زوجة'] = { frac: F(1), waa: '-', type: 'الوحيد' };
+    if (father) res['أب'] = { frac: F(1), waa: '-', type: 'الوحيد' };
+    if (mother) res['أم'] = { frac: F(1), waa: '-', type: 'الوحيد' };
+    if (son) res['ابن'] = { frac: F(1), waa: '-', type: 'الوحيد' };
+    if (dau) res['بنت'] = { frac: F(1), waa: '-', type: 'الوحيد' };
+    if (brothers) res['أخ'] = { frac: F(1), waa: '-', type: 'الوحيد' };
+    if (sisters) res['أخت'] = { frac: F(1), waa: '-', type: 'الوحيد' };
+    return res;
+  }
+
+  const K = {}, Fsh = {};
+
+  if (husband && hasChild) K['زوج'] = { frac: F(1,4), type: 'ثابت' };
+  if (wife && hasChild) K['زوجة'] = { frac: F(1,8), type: 'ثابت' };
+  if (mother && totalSib >= 2 && kallah) K['أم'] = { frac: F(1,6), type: 'ثابت' };
+  
+  if (kallah && totalSib >= 3 && dau > 0 && son === 0) {
+    if (brothers > 0 && sisters > 0) {
+      const tp = 2*brothers + sisters;
+      K['إخوة'] = { frac: mul(F(2*brothers, tp), F(1,3)), type: 'ثابت' };
+      K['أخوات'] = { frac: mul(F(sisters, tp), F(1,3)), type: 'ثابت' };
+    } else if (brothers >= 3) {
+      K['إخوة'] = { frac: F(1,3), type: 'ثابت' };
+    } else if (sisters >= 3) {
+      K['أخوات'] = { frac: F(1,3), type: 'ثابت' };
+    }
+  }
+
+  let Ksum = F(0);
+  for (const k in K) Ksum = add(Ksum, K[k].frac);
+
+  if (father && !hasChild) {
+    if (mother) Fsh['أم'] = { frac: mul(F(1,3), sub(F(1), Ksum)), type: 'مفتوح' };
+    let fsum = F(0);
+    for (const k in Fsh) fsum = add(fsum, Fsh[k].frac);
+    Fsh['أب'] = { frac: sub(sub(F(1), Ksum), fsum), type: 'عصبة' };
+    return merge(K, Fsh);
+  }
+
+  const Fsize = sub(F(1), Ksum);
+
+  if (husband && !hasChild) Fsh['زوج'] = { frac: mul(F(1,2), Fsize), type: 'تراكمي' };
+  if (wife && !hasChild) Fsh['زوجة'] = { frac: mul(F(1,4), Fsize), type: 'ثابت' };
+  if (father && hasChild) Fsh['أب'] = { frac: mul(F(1,6), Fsize), type: 'ثابت' };
+  if (mother && !K['أم']) {
+    if (hasChild) Fsh['أم'] = { frac: mul(F(1,6), Fsize), type: 'ثابت' };
+    else Fsh['أم'] = { frac: mul(F(1,3), Fsize), type: 'مفتوح' };
+  }
+
+  if (son > 0) {
+    let rem = Fsize;
+    for (const k in Fsh) rem = sub(rem, Fsh[k].frac);
+    if (dau > 0) {
+      const tp = 2*son + dau;
+      Fsh['ابن'] = { frac: mul(F(2*son, tp), rem), type: 'مفتوح' };
+      Fsh['بنت'] = { frac: mul(F(dau, tp), rem), type: 'مفتوح' };
+    } else Fsh['ابن'] = { frac: rem, type: 'مفتوح' };
+  } else if (dau > 0) {
+    Fsh['بنت'] = { frac: mul(dau === 1 ? F(1,2) : F(2,3), Fsize), type: dau === 1 ? 'ثابت' : 'تراكمي' };
+  }
+
+  if (kallah && son === 0 && totalSib > 0) {
+    if (dau > 0) {
+      if (totalSib === 1) {
+        if (brothers === 1) Fsh['أخ'] = { frac: mul(F(1,6), Fsize), type: 'مفتوح' };
+        else Fsh['أخت'] = { frac: mul(F(1,6), Fsize), type: 'مفتوح' };
+      } else if (totalSib === 2) {
+        if (brothers === 2) Fsh['إخوة'] = { frac: mul(F(1,3), Fsize), type: 'مفتوح' };
+        else if (sisters === 2) Fsh['أخوات'] = { frac: mul(F(1,3), Fsize), type: 'مفتوح' };
+        else { Fsh['إخوة'] = { frac: mul(F(1,6), Fsize), type: 'مفتوح' }; Fsh['أخوات'] = { frac: mul(F(1,6), Fsize), type: 'مفتوح' }; }
+      }
+    } else {
+      if (totalSib === 1) {
+        if (brothers === 1) {
+          let rem = Fsize;
+          for (const k in Fsh) rem = sub(rem, Fsh[k].frac);
+          Fsh['أخ'] = { frac: rem, type: 'مفتوح' };
+        } else Fsh['أخت'] = { frac: mul(F(1,2), Fsize), type: 'تراكمي' };
+      } else {
+        if (brothers > 0 && sisters > 0) {
+          let rem = Fsize;
+          for (const k in Fsh) rem = sub(rem, Fsh[k].frac);
+          const tp = 2*brothers + sisters;
+          Fsh['إخوة'] = { frac: mul(F(2*brothers, tp), rem), type: 'مفتوح' };
+          Fsh['أخوات'] = { frac: mul(F(sisters, tp), rem), type: 'مفتوح' };
+        } else if (sisters >= 2) {
+          Fsh['أخوات'] = { frac: mul(F(2,3), Fsize), type: 'ثابت' };
+        } else if (brothers >= 2) {
+          let rem = Fsize;
+          for (const k in Fsh) rem = sub(rem, Fsh[k].frac);
+          Fsh['إخوة'] = { frac: rem, type: 'مفتوح' };
+        }
+      }
+    }
+  }
+
+  let Fsum = F(0);
+  for (const k in Fsh) Fsum = add(Fsum, Fsh[k].frac);
+  let leftover = sub(Fsize, Fsum);
+
+  if (leftover.n > 0) {
+    const tarkumi = [], maftouh = [], thabit = [];
+    for (const k in Fsh) {
+      if (Fsh[k].type === 'تراكمي') tarkumi.push(k);
+      else if (Fsh[k].type === 'مفتوح') maftouh.push(k);
+      else if (Fsh[k].type === 'ثابت') thabit.push(k);
+    }
+    const thabitFiltered = thabit.filter(k => k !== 'زوجة' && k !== 'زوج');
+    let eligible = tarkumi.length > 0 ? tarkumi : (maftouh.length > 0 ? maftouh : thabitFiltered);
+    if (eligible.length > 0) {
+      let tot = F(0);
+      for (const k of eligible) tot = add(tot, Fsh[k].frac);
+      for (const k of eligible) {
+        Fsh[k].frac = add(Fsh[k].frac, mul(leftover, div(Fsh[k].frac, tot)));
+      }
+    }
+  }
+
+  return merge(K, Fsh);
+}
+
+function merge(K, Fsh) {
+  const res = {};
+  for (const k in K) res[k] = { frac: K[k].frac, waa: 'K', type: K[k].type };
+  for (const k in Fsh) {
+    if (res[k]) res[k].frac = add(res[k].frac, Fsh[k].frac);
+    else res[k] = { frac: Fsh[k].frac, waa: 'F', type: Fsh[k].type };
+  }
+  return res;
+}
+
+function splitToIndividuals(data, h) {
+  const rows = [];
+  if (data['زوج']) rows.push({ name: 'زوج', frac: data['زوج'].frac, waa: data['زوج'].waa || 'F', type: data['زوج'].type });
+  if (data['زوجة'] && h.wife > 0) {
+    const each = div(data['زوجة'].frac, F(h.wife));
+    for (let i = 1; i <= h.wife; i++) rows.push({ name: `زوجة ${i}`, frac: each, waa: data['زوجة'].waa || 'F', type: data['زوجة'].type });
+  }
+  if (data['أب']) rows.push({ name: 'أب', frac: data['أب'].frac, waa: data['أب'].waa || 'F', type: data['أب'].type });
+  if (data['أم']) rows.push({ name: 'أم', frac: data['أم'].frac, waa: data['أم'].waa || 'F', type: data['أم'].type });
+  if (data['ابن'] && h.son > 0) {
+    const each = div(data['ابن'].frac, F(h.son));
+    for (let i = 1; i <= h.son; i++) rows.push({ name: `ابن ${i}`, frac: each, waa: data['ابن'].waa || 'F', type: data['ابن'].type });
+  }
+  if (data['بنت'] && h.daughter > 0) {
+    const each = div(data['بنت'].frac, F(h.daughter));
+    for (let i = 1; i <= h.daughter; i++) rows.push({ name: `بنت ${i}`, frac: each, waa: data['بنت'].waa || 'F', type: data['بنت'].type });
+  }
+  if (data['إخوة'] && h.brothers > 0) {
+    const each = div(data['إخوة'].frac, F(h.brothers));
+    for (let i = 1; i <= h.brothers; i++) rows.push({ name: `أخ ${i}`, frac: each, waa: data['إخوة'].waa || 'F', type: data['إخوة'].type });
+  }
+  if (data['أخوات'] && h.sisters > 0) {
+    const each = div(data['أخوات'].frac, F(h.sisters));
+    for (let i = 1; i <= h.sisters; i++) rows.push({ name: `أخت ${i}`, frac: each, waa: data['أخوات'].waa || 'F', type: data['أخوات'].type });
+  }
+  if (data['أخ'] && h.brothers === 1 && !data['إخوة']) rows.push({ name: 'أخ', frac: data['أخ'].frac, waa: data['أخ'].waa || 'F', type: data['أخ'].type });
+  if (data['أخت'] && h.sisters === 1 && !data['أخوات']) rows.push({ name: 'أخت', frac: data['أخت'].frac, waa: data['أخت'].waa || 'F', type: data['أخت'].type });
+  return rows;
+}
+
+function calculate() {
+  const h = {};
+  HEIRS.forEach(x => {
+    const chk = document.getElementById('chk_' + x.id);
+    if (chk.checked) {
+      const num = document.getElementById('num_' + x.id);
+      h[x.id] = num ? parseInt(num.value) || 1 : 1;
+    }
+  });
+
+  if (h.husband && h.wife) {
+    document.getElementById('warningMsg').style.display = 'block';
+    document.getElementById('resultSection').style.display = 'block';
+    document.getElementById('resultContent').innerHTML = '<div class="error">❌ لا يمكن أن يجتمع الزوج والزوجة في الميراث.</div>';
+    return;
+  }
+
+  if (Object.keys(h).length === 0) {
+    document.getElementById('resultSection').style.display = 'block';
+    document.getElementById('resultContent').innerHTML = '<div class="error">اختر وارثًا واحدًا على الأقل</div>';
+    return;
+  }
+
+  document.getElementById('warningMsg').style.display = 'none';
+  const estate = parseFloat(document.getElementById('estate').value) || 120;
+  const res = calc(h);
+  const individuals = splitToIndividuals(res, h);
+  showResult(individuals, estate);
+}
+
+function showResult(rows, estate) {
+  const sec = document.getElementById('resultSection');
+  const con = document.getElementById('resultContent');
+  sec.style.display = 'block';
+  let html = '<table><thead><tr><th>الوارث</th><th>الوعاء</th><th>النوع</th><th>الكسر</th><th>النسبة</th><th>المبلغ</th></tr></thead><tbody>';
+  let sum = F(0);
+  rows.forEach(r => {
+    sum = add(sum, r.frac);
+    const amount = (r.frac.n / r.frac.d) * estate;
+    let badgeClass = '';
+    if (r.type === 'تراكمي') badgeClass = 'badge-tarkumi';
+    else if (r.type === 'ثابت') badgeClass = 'badge-thabit';
+    else if (r.type === 'مفتوح') badgeClass = 'badge-maftouh';
+    else badgeClass = 'badge-thabit';
+    let waaBadge = 'badge-F';
+    if (r.waa === 'K') waaBadge = 'badge-K';
+    html += `<tr><td><strong>${r.name}</strong></td><td><span class="badge ${waaBadge}">${r.waa}</span></td><td><span class="badge ${badgeClass}">${r.type}</span></td><td>${toStr(r.frac)}</td><td>${toPct(r.frac)}</td><td><strong>${amount.toFixed(2)}</strong></td></tr>`;
+  });
+  html += '</tbody></table>';
+  html += `<div class="result-total">المجموع: <strong>${toStr(sum)}</strong> = ${toPct(sum)} = <strong>${estate.toFixed(2)}</strong></div>`;
+  con.innerHTML = html;
+}
+
+buildForm();
+</script>
+</body>
+</html>
